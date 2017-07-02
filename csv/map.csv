@@ -1,0 +1,6 @@
+KN,S,NI,B,AS
+MapId,Name,Type,CanAttack,Mons
+1,aa,1,True,1;2;3
+2,aa2,1,False,4;5;6
+3,aa3,1,True,8;2;3
+4,测试4,2,False,3;2;3;1

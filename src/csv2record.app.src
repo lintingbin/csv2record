@@ -1,0 +1,16 @@
+{application, csv2record,
+ [{description, "Translate csv line to erlang record."},
+  {vsn, "0.1.0"},
+  {registered, []},
+  {mod, { csv2record_app, []}},
+  {applications,
+   [kernel,
+    stdlib
+   ]},
+  {env,[]},
+  {modules, []},
+
+  {maintainers, []},
+  {licenses, ["Apache 2.0"]},
+  {links, []}
+ ]}.
