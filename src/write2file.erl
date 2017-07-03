@@ -7,30 +7,35 @@
 
 write(BaseName, ErlData, AttrList, Opt) ->
   Name = string:to_lower(BaseName),
-  write_erl_file(Name, ErlData, AttrList, Opt),
-  write_hrl_file(Name, AttrList).
+  Prefix = csv2record:get_opt(record_prefix, Opt),
+  RecordName = Prefix ++ "_" ++ Name,
+  write_hrl_file(RecordName, AttrList, Opt),
+  write_erl_file(RecordName, ErlData, AttrList, Opt).
 
 write_erl_file(Name, ErlData, AttrList, Opt) ->
   {FunStr, IndexFunName} = build_function_str(ErlData, AttrList, [], [], Name),
   ErlStr = build_erl_file_str(Name, FunStr, IndexFunName),
   Dir = csv2record:get_opt(src_dir, Opt),
-  FileName = filename:join([Dir, Name, ".erl"]),
-  {ok, IoDevice} = file:open(FileName, [write]),
+  FileName = Name ++ ".erl",
+  Path = filename:join([Dir, FileName]),
+  {ok, IoDevice} = file:open(Path, [write]),
   io:format(IoDevice, ErlStr, []),
   file:close(IoDevice),
-  erase().
+  erase(),
+  Path.
   
 build_function_str([], _, Funs, Keys, _) ->
   FunLists = lists:reverse(Funs),
   KeyFunStr = string:join(FunLists, ";\n"),
   KeysStr = string:join(Keys, ", "),
-  GetAllKeysFunStr = lists:concat(["get_all_keys() -> \n  [", KeysStr, "].\n"]),
+  GetAllKeysFunStr = "get_all_keys() -> \n  [" ++ KeysStr ++ "].\n",
   {GetIndexFunStr, IndexFunName} = build_index_function_str(),
-  FunStr = lists:concat([KeyFunStr, ".\n\n", GetAllKeysFunStr, "\n", GetIndexFunStr]),
+  FunStr = KeyFunStr ++ ";\nget(_) -> not_found.\n" ++
+    GetAllKeysFunStr ++ "\n" ++ GetIndexFunStr,
   {FunStr, IndexFunName};
 build_function_str([Line| Tail], AttrList, Funs, Keys, Name) ->
   {Key, Index, ValueStr} = build_value_str(Line, AttrList, [], [], []),
-  FunStr = lists:concat(["get(", Key, ") -> \n  #", Name, ValueStr]),
+  FunStr = "get(" ++ Key ++ ") -> \n  #" ++ Name ++ ValueStr,
   set_index(Index, Key),
   build_function_str(Tail, AttrList, [FunStr| Funs], [Key| Keys], Name).
 
@@ -39,25 +44,24 @@ build_index_function_str() ->
   build_index_function_str(DictList, [], []).
 
 build_index_function_str([], Done, IndexFun) ->
-  IndexFunStr = string:join(Done, "\n"),
-  IndexFunStr1 = lists:concat([IndexFunStr, "\n\n"]),
+  IndexFunStr = string:join(Done, "\n") ++ "\n\n",
   IndexFunName = string:join(IndexFun, ", "),
   IndexFunName1 = 
     case IndexFun of
       [] ->
         IndexFunName;
       _ ->
-        lists:concat([", ", IndexFunName])
+        ", " ++ IndexFunName
     end,
-  {IndexFunStr1, IndexFunName1};
+  {IndexFunStr, IndexFunName1};
 build_index_function_str([{IndexName, DictList}| Tail], Done, IndexFun) ->
-  IndexFunName = lists:concat(["get_", IndexName, "_keys"]),
+  IndexFunName = "get_" ++ IndexName ++ "_keys",
   FunStr = build_index_function_str_one(DictList, IndexFunName, []),
-  build_index_function_str(Tail, [FunStr| Done], [lists:concat([IndexFunName, "/1"])| IndexFun]).
+  build_index_function_str(Tail, [FunStr| Done], [IndexFunName ++ "/1"| IndexFun]).
 
-build_index_function_str_one([], _, Done) ->
+build_index_function_str_one([], IndexFunName, Done) ->
   IndexFunStr = string:join(Done, ";\n"),
-  lists:concat([IndexFunStr, ".\n\n"]);
+  IndexFunStr ++ ";\n" ++ IndexFunName ++ "(_) -> \n not_found.\n\n";
 build_index_function_str_one([{Key, Value}| Tail], IndexFunName, Done) ->
   RealValue = string:join(Value, ", "),
   FunStr = lists:concat([IndexFunName, "(", Key, ") -> \n  [", RealValue, "]"]),
@@ -86,7 +90,7 @@ build_value_str(Line, Field, Done, Key, Index) when Line =:= []; Field =:= [] ->
       false ->
         io_lib:format("~w", [list_to_tuple(lists:reverse(Key))])
     end,
-  {RealKey, Index, lists:concat(["{", Str, "}"])};
+  {RealKey, Index, "{" ++ Str ++ "}"};
 build_value_str([Value| VTail], [FieldAttr| CTail], Done, Key, Index) ->
   #field_attr{
     name = Name, 
@@ -109,24 +113,24 @@ build_value_str([Value| VTail], [FieldAttr| CTail], Done, Key, Index) ->
 build_array_str([], Done) ->
   ReverseDone = lists:reverse(Done),
   Str = string:join(ReverseDone, ", "),
-  lists:concat(["[", Str, "]"]);
+  "[" ++ Str ++ "]";
 build_array_str([X| Tail], Done) ->
   Str = lists:concat([X]),
   build_array_str(Tail, [Str| Done]).
 
 build_erl_file_str(Name, FunStr, IndexFunName) ->
-  List = ["-module(", Name, ").\n\n"
-  "-include(\"", Name, ".hrl\").\n\n"
-  "-export([get/1, get_all_keys/0", IndexFunName, "]).\n\n",
-  FunStr],
-  lists:concat(List).
+  "-module(" ++ Name ++ ").\n\n"
+  "-include(\"" ++ Name ++ ".hrl\").\n\n"
+  "-export([get/1, get_all_keys/0" ++ IndexFunName ++ "]).\n\n" ++ FunStr.
 
-write_hrl_file(Name, AttrList) ->
-  Macro = lists:concat([Name, "_hrl_file"]),
+write_hrl_file(Name, AttrList, Opt) ->
+  Macro = Name ++ "_hrl_file",
   UpperMacro = string:to_upper(Macro),
   Fields = build_record_field(AttrList, []),
-  FileName = lists:concat([Name, ".hrl"]),
-  {ok, IoDevice} = file:open(FileName, [write]),
+  FileName = Name ++ ".hrl",
+  Dir = csv2record:get_opt(hrl_dir, Opt),
+  Path = filename:join([Dir, FileName]),
+  {ok, IoDevice} = file:open(Path, [write]),
   FileStr = build_record_file_str(UpperMacro, Macro, Name, Fields),
   io:format(IoDevice, FileStr, []),
   file:close(IoDevice).
@@ -134,14 +138,13 @@ write_hrl_file(Name, AttrList) ->
 build_record_field([], Done) -> 
   ReverseDone = lists:reverse(Done),
   Str = string:join(ReverseDone, ", "),
-  lists:concat(["{", Str, "}"]);
+  "{" ++ Str ++ "}";
 build_record_field([#field_attr{name = Name, type = {_, Default}}| Tail], Done) ->
   NewOne = lists:concat([Name, " = ", Default]),
   build_record_field(Tail, [NewOne| Done]).
 
 build_record_file_str(UpperMacro, Macro, Name, Fields) ->
-  List = ["-ifndef(", UpperMacro, ").\n"
-  "-define(", UpperMacro, ", ", Macro, ").\n\n"
-  "-record(", Name, ", ", Fields, ").\n\n"
-  "-endif."],
-  lists:concat(List).
+  "-ifndef(" ++ UpperMacro ++ ").\n"
+  "-define(" ++ UpperMacro ++ ", " ++ Macro ++ ").\n\n"
+  "-record(" ++ Name ++ ", " ++ Fields ++ ").\n\n"
+  "-endif.".

@@ -17,30 +17,41 @@ generate(Path, Opt) ->
 generate_files(Dir, Opt) ->
   Pid = self(),
   AllCsvFiles = filelib:fold_files(Dir, ".csv$", false, fun(File, Acc) -> [File| Acc] end, []),
-  [proc_lib:spawn_link(fun() -> generate_file(File, Pid, Opt) end) || File <- AllCsvFiles],
+  [proc_lib:spawn_link(fun() -> 
+    case catch generate_file(File, Pid, Opt) of
+      ok -> 
+        ok;
+      Error ->
+        Pid ! Error
+    end
+  end) || File <- AllCsvFiles],
   loop(length(AllCsvFiles)).
 
 loop(0) -> ok;
 loop(N) ->
   receive
-    {parse_success, File} ->
-      io:format("file ~p parse success~n", [File]);
+    {generate_success, File} ->
+      io:format("file ~p generate success~n", [File]),
+      loop(N - 1);
     Other ->
-      io:format("unexcept msg ~p~n", [Other])
-  end,
-  loop(N - 1).
+      exit(Other)
+  end.
 
 generate_file(Path, Pid, Opt) ->
   {Data, AttrList} = csv_parser:parse(Path, Opt),
   BaseName = filename:rootname(filename:basename(Path)),
   make_dir(Opt),
-  write2file:write(BaseName, Data, AttrList, Opt),
+  ErlFile = write2file:write(BaseName, Data, AttrList, Opt),
+  HrlDir = get_opt(hrl_dir, Opt),
+  EbinDir = get_opt(ebin_dir, Opt),
+  {ok, _} = compile:file(ErlFile, [{i, HrlDir}, {outdir, EbinDir}, verbose, report_errors, report_warnings]),
   case Pid =:= undefined of
     true ->
       ok;
     false ->
-      Pid ! {parse_success, Path}
-  end.
+      Pid ! {generate_success, Path}
+  end,
+  ok.
 
 make_dir(Opt) ->
   HrlDir = get_opt(hrl_dir, Opt),
@@ -67,8 +78,8 @@ get_opt(Key, Opt) ->
 get_default_opt(hrl_dir) ->
   "csv_hrl_dir";
 get_default_opt(src_dir) ->
-  "csv_source_dir";
+  "csv_src_dir";
 get_default_opt(ebin_dir) ->
   "ebin";
 get_default_opt(record_prefix) ->
-  "".
+  "csv".
