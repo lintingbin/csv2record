@@ -33,12 +33,27 @@ loop(N) ->
 generate_file(Path, Pid, Opt) ->
   {Data, AttrList} = csv_parser:parse(Path, Opt),
   BaseName = filename:rootname(filename:basename(Path)),
-  write2file:write(BaseName, Data, AttrList),
+  make_dir(Opt),
+  write2file:write(BaseName, Data, AttrList, Opt),
   case Pid =:= undefined of
     true ->
       ok;
     false ->
       Pid ! {parse_success, Path}
+  end.
+
+make_dir(Opt) ->
+  HrlDir = get_opt(hrl_dir, Opt),
+  SrcDir = get_opt(src_dir, Opt),
+  EbinDir = get_opt(ebin_dir, Opt),
+  [make_dir_proc(X) || X <- [HrlDir, SrcDir, EbinDir]].
+
+make_dir_proc(Dir) ->
+  case filelib:is_dir(Dir) of
+    true ->
+      ok;
+    false ->
+      file:make_dir(Dir)
   end.
 
 get_opt(Key, Opt) ->

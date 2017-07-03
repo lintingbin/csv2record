@@ -1,19 +1,20 @@
 -module(write2file).
 -author("ltb<lintingbin31@gmail.com>").
 
--export([write/3]).
+-export([write/4]).
 
 -include("record.hrl").
 
-write(BaseName, ErlData, AttrList) ->
+write(BaseName, ErlData, AttrList, Opt) ->
   Name = string:to_lower(BaseName),
-  write_erl_file(Name, ErlData, AttrList),
+  write_erl_file(Name, ErlData, AttrList, Opt),
   write_hrl_file(Name, AttrList).
 
-write_erl_file(Name, ErlData, AttrList) ->
+write_erl_file(Name, ErlData, AttrList, Opt) ->
   {FunStr, IndexFunName} = build_function_str(ErlData, AttrList, [], [], Name),
   ErlStr = build_erl_file_str(Name, FunStr, IndexFunName),
-  FileName = lists:concat([Name, ".erl"]),
+  Dir = csv2record:get_opt(src_dir, Opt),
+  FileName = filename:join([Dir, Name, ".erl"]),
   {ok, IoDevice} = file:open(FileName, [write]),
   io:format(IoDevice, ErlStr, []),
   file:close(IoDevice),
