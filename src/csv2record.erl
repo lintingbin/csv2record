@@ -38,12 +38,12 @@ loop(N) ->
   end.
 
 generate_file(Path, Pid, Opt) ->
-  {Data, AttrList} = csv_parser:parse(Path, Opt),
-  BaseName = filename:rootname(filename:basename(Path)),
-  make_dir(Opt),
-  ErlFile = write2file:write(BaseName, Data, AttrList, Opt),
+  check_and_make_dir(Opt),
   HrlDir = get_opt(hrl_dir, Opt),
   EbinDir = get_opt(ebin_dir, Opt),
+  {Data, AttrList} = csv_parser:parse(Path),
+  BaseName = filename:rootname(filename:basename(Path)),
+  ErlFile = file_generator:generate(BaseName, Data, AttrList, Opt),
   {ok, _} = compile:file(ErlFile, [{i, HrlDir}, {outdir, EbinDir}, verbose, report_errors, report_warnings]),
   case Pid =:= undefined of
     true ->
@@ -53,13 +53,13 @@ generate_file(Path, Pid, Opt) ->
   end,
   ok.
 
-make_dir(Opt) ->
+check_and_make_dir(Opt) ->
   HrlDir = get_opt(hrl_dir, Opt),
   SrcDir = get_opt(src_dir, Opt),
   EbinDir = get_opt(ebin_dir, Opt),
-  [make_dir_proc(X) || X <- [HrlDir, SrcDir, EbinDir]].
+  [check_and_make_dir_proc(X) || X <- [HrlDir, SrcDir, EbinDir]].
 
-make_dir_proc(Dir) ->
+check_and_make_dir_proc(Dir) ->
   case filelib:is_dir(Dir) of
     true ->
       ok;

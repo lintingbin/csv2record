@@ -1,7 +1,7 @@
 -module(csv_parser).
 -author("ltb<lintingbin31@gmail.com>").
 
--export([parse/2]).
+-export([parse/1]).
 
 -include("record.hrl").
 
@@ -9,13 +9,13 @@
 -define(CSV_LINE_END, "\r\n|\n|\r").
 -define(ARRAY_SEMICOLON, ";").
 
-parse(File, Opt) ->
+parse(File) ->
   put(file, File),
   case file:read_file(File) of
     {ok, BinData} ->
       Data = binary_to_list(BinData),
       AllLines = re:split(Data, ?CSV_LINE_END, [{return, list}, trim]),
-      {AttrList, ContentLines} =
+      {Attrs, Lines} =
         case AllLines of
           [Types, Names| Tail] ->
             TypeList = re:split(Types, ?CSV_COMMA, [{return, list}]),
@@ -24,8 +24,8 @@ parse(File, Opt) ->
           _ ->
             error_exit(type_and_name_undefined)
         end,
-      ErlData = parse_lines(ContentLines, AttrList, []),
-      {ErlData, AttrList};
+      ErlData = parse_lines(Lines, Attrs, []),
+      {ErlData, Attrs};
     {error, Reason} ->
       error_exit(Reason)
   end.
@@ -33,67 +33,65 @@ parse(File, Opt) ->
 build_attr(NameList, TypeList) ->
   build_attr(NameList, TypeList, [], 1).
 
-build_attr([], [], Config, _) ->
-  lists:reverse(Config);
-build_attr([Name| NTail], [Attrs| TTail], Config, Cnt) ->
-  NewCnt = Cnt + 1,
-  FieldAttr = build_field_attr(Attrs),
-  case FieldAttr#field_attr.type =:= undefined of
+build_attr([], [], Attrs, _) ->
+  lists:reverse(Attrs);
+build_attr([Name| Ntail], [Types| Ttail], Attrs, Column) ->
+  NewColumn = Column + 1,
+  Attr = build_column_attr(Types),
+  case Attr#column_attr.type =:= undefined of
     true ->
-      build_attr(NTail, TTail, Config, NewCnt);
+      build_attr(Ntail, Ttail, Attrs, NewColumn);
     false ->
       LowerName = string:to_lower(Name),
       AtomName = io_lib:format("~w", [list_to_atom(LowerName)]),
-      NewOne = FieldAttr#field_attr{line = Cnt, name = AtomName},
-      build_attr(NTail, TTail, [NewOne| Config], NewCnt)
+      NewAttr = Attr#column_attr{col = Column, name = AtomName},
+      build_attr(Ntail, Ttail, [NewAttr| Attrs], NewColumn)
   end.
 
-build_field_attr(Attrs) ->
-  build_field_attr(Attrs, #field_attr{}).
+build_column_attr(Attrs) ->
+  build_column_attr(Attrs, #column_attr{}).
 
-build_field_attr([], Attr) -> Attr;
-build_field_attr([$K| Tail], Attr) ->
-  build_field_attr(Tail, Attr#field_attr{is_key = true});
-build_field_attr([$I| Tail], Attr) ->
-  build_field_attr(Tail, Attr#field_attr{is_index = true});
-build_field_attr([$A| Tail], Attr) ->
-  build_field_attr(Tail, Attr#field_attr{is_array = true});
-build_field_attr([$N| Tail], Attr) ->
-  build_field_attr(Tail, Attr#field_attr{type = {integer, 0}});
-build_field_attr([$S| Tail], Attr) ->
-  build_field_attr(Tail, Attr#field_attr{type = {string, [$", $"]}});
-build_field_attr([$B| Tail], Attr) ->
-  build_field_attr(Tail, Attr#field_attr{type = {bool, false}});
-build_field_attr([_| Tail], Attr) ->
-  build_field_attr(Tail, Attr).
+build_column_attr([], Attr) -> Attr;
+build_column_attr([$K| Tail], Attr) ->
+  build_column_attr(Tail, Attr#column_attr{is_key = true});
+build_column_attr([$I| Tail], Attr) ->
+  build_column_attr(Tail, Attr#column_attr{is_index = true});
+build_column_attr([$A| Tail], Attr) ->
+  build_column_attr(Tail, Attr#column_attr{is_array = true});
+build_column_attr([$N| Tail], Attr) ->
+  build_column_attr(Tail, Attr#column_attr{type = {integer, 0}});
+build_column_attr([$S| Tail], Attr) ->
+  build_column_attr(Tail, Attr#column_attr{type = {string, [$", $"]}});
+build_column_attr([$B| Tail], Attr) ->
+  build_column_attr(Tail, Attr#column_attr{type = {bool, false}});
+build_column_attr([_| Tail], Attr) ->
+  build_column_attr(Tail, Attr).
 
 parse_lines([], _, Res) -> 
   lists:reverse(Res);
-parse_lines([Line| Tail], Attr, Res) ->
-  LineList = re:split(Line, ?CSV_COMMA),
-  LineData = build_line(LineList, Attr),
-  parse_lines(Tail, Attr, [LineData| Res]).
+parse_lines([Line| Tail], Attrs, Res) ->
+  List = re:split(Line, ?CSV_COMMA),
+  Data = parse_line(List, Attrs),
+  parse_lines(Tail, Attrs, [Data| Res]).
 
-build_line(LineList, Attr) ->
-  build_line(LineList, Attr, [], 1).
+parse_line(List, Attrs) ->
+  parse_line(List, Attrs, [], 1).
 
-build_line([], _, Done, _) ->
+parse_line(List, Attrs, Done, _) when List =:= []; Attrs =:= [] ->
   lists:reverse(Done);
-build_line(_, [], Done, _) ->
-  lists:reverse(Done);
-build_line([Data| LTail], [#field_attr{line = Cnt} = Attr| ATail], Done, Cnt) ->
-  NewOne = build_line_elment(Data, Attr),
-  build_line(LTail, ATail, [NewOne| Done], Cnt + 1);
-build_line([_Data| LTail], ATail, Done, Cnt) ->
-  build_line(LTail, ATail, Done, Cnt + 1).
+parse_line([Element| Ltail], [#column_attr{col = Col} = Attr| Atail], Done, Col) ->
+  ErlData = parse_elment(Element, Attr),
+  parse_line(Ltail, Atail, [ErlData| Done], Col + 1);
+parse_line([_| Ltail], Atail, Done, Col) ->
+  parse_line(Ltail, Atail, Done, Col + 1).
 
-build_line_elment(Data, #field_attr{is_array = IsArray, type = Type}) ->
+parse_elment(Element, #column_attr{is_array = IsArray, type = Type}) ->
   case IsArray of
     true ->
-      DataList = re:split(Data, ?ARRAY_SEMICOLON),
-      [trans2erlang_type(Type, X) || X <- DataList];
+      ElementList = re:split(Element, ?ARRAY_SEMICOLON),
+      [trans2erlang_type(Type, X) || X <- ElementList];
     false ->
-      trans2erlang_type(Type, Data)
+      trans2erlang_type(Type, Element)
   end.
 
 trans2erlang_type({_ErlType, Defalut}, <<>>) ->
