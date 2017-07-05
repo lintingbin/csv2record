@@ -77,5 +77,5 @@ csv2record:generate(File, Option).
 ```
 Discussing
 ----
-- [submit issue](https://github.com/lintingbin2009/csv2record/issues)
-- email:[lintingbin31@gmail.com](lintingbin31@gmail.com)
+- [Submit issue](https://github.com/lintingbin2009/csv2record/issues)
+- Email: lintingbin31@gmail.com
