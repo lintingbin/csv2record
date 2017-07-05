@@ -62,7 +62,7 @@ get_type_keys(_) ->
 ```
 Usage
 ----
-Compile the project, and then execute the following command. 
+Compile the project, and then execute the following command:
 ``` erlang
 csv2record:generate(File).  
 csv2record:generate(File, Option).  
