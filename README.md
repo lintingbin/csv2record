@@ -9,17 +9,21 @@ Usually a large number of configurations in the game server are stored through t
 Csv file format
 ----
 In order for the tool to work properly, we need to define the correct csv file format. We need to use the first line of the csv file to declare the type of data, and then use the second line to declare the name of the record field. For example:
+
 KN|S|NI|B|AS
----|---|---|---|---
-**MapId**|**Name**|**Type**|**IsBool**|**Mons**
-1|text1|1|True|1a;2;3
-2|text2|1|False|4df;53f;6
-3|text3|1|True|8;2;3asdf
-4|text4|2|False|3;2;3fd;1
+|:---:|:---:|:---:|:---:|:---:|
+|**MapId**|**Name**|**Type**|**IsBool**|**Mons**|
+|1|text1|1|True|1a;2;3|
+|2|text2|1|False|4df;53f;6|
+|3|text3|1|True|8;2;3asdf|
+|4|text4|2|False|3;2;3fd;1|
+
 In the above csv table, the first line is the type(Can be combined), the second line is the name of the record field. As shown below, all types are single uppercase letters:
-K|I|N|B|S
----|---|---|---|---
+
+|K|I|N|B|S|
+|:---:|:---:|:---:|:---:|:---:|
 Key|Index|Number|Boolean|String
+
 **Key** and **Index** can be used with **Number**, **Boolean**, **String**. A csv table has at least one Key and zero or more Index. The above csv table will eventually be converted to the following .hrl file and .erl file:
 ``` erlang
 -ifndef(CSV_MAP_HRL_FILE).
