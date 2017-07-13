@@ -20,11 +20,11 @@ KN|S|NI|B|AS
 
 In the above csv table, the first line is the type(Can be combined), the second line is the name of the record field. As shown below, all types are single uppercase letters:
 
-|K|I|N|B|S|
-|:---:|:---:|:---:|:---:|:---:|
-Key|Index|Number|Boolean|String
+|K|I|A|N|B|S|
+|:---:|:---:|:---:|:---:|:---:|:---:|
+Key|Index|Array|Number|Boolean|String
 
-**Key** and **Index** can be used with **Number**, **Boolean**, **String**. A csv table has at least one Key and zero or more Index. The above csv table will eventually be converted to the following .hrl file and .erl file:
+**Key**, **Index** and **Array** can be used with **Number**, **Boolean** and **String**. A csv table has at least one Key and zero or more Index. The above csv table will eventually be converted to the following .hrl file and .erl file:
 ``` erlang
 -ifndef(CSV_MAP_HRL_FILE).
 -define(CSV_MAP_HRL_FILE, csv_map_hrl_file).
