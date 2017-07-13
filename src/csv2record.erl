@@ -1,7 +1,21 @@
 -module(csv2record).
 -author("ltb<lintingbin31@gmail.com>").
 
--export([generate/1, generate/2, get_opt/2]).
+-export([main/1, generate/1, generate/2, get_opt/2]).
+
+main(Params) ->
+  case Params of
+    [Path] ->
+      generate(Path);
+    [Path, OptStr] ->
+      KeyValueStr = re:split(OptStr, ";", [{return,list}, trim]),
+      KeyValuePair = [re:split(Str, "=", [{return,list}, trim]) || Str <- KeyValueStr],
+      OptList = [{list_to_atom(KeyStr), ValueStr} || [KeyStr, ValueStr] <- KeyValuePair],
+      generate(Path, OptList);
+    _ ->
+      io:format("Error param count~n"),
+      halt(1)
+  end.
 
 generate(Path) ->
   generate(Path, []).
@@ -31,7 +45,7 @@ loop(0) -> ok;
 loop(N) ->
   receive
     {generate_success, File} ->
-      io:format("file ~p generate success~n", [File]),
+      io:format("File ~p generate success~n", [File]),
       loop(N - 1);
     Other ->
       exit(Other)
