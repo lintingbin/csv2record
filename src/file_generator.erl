@@ -28,7 +28,7 @@ build_hrl_file_str(RecordName, Attrs) ->
   "-ifndef(" ++ UpperMacro ++ ").\n"
   "-define(" ++ UpperMacro ++ ", " ++ Macro ++ ").\n\n"
   "-record(" ++ RecordName ++ ", {" ++ Fields ++ "}).\n\n"
-  "-endif.".
+  "-endif.\n\n".
 
 build_record_field_str([], Fields) -> 
   string:join(lists:reverse(Fields), ", ");
