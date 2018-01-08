@@ -67,14 +67,15 @@ build_get_fun_str([Line| Tail], Attrs, Funs, Keys, Name) ->
   set_index(Index, Key),
   build_get_fun_str(Tail, Attrs, [FunStr| Funs], [Key| Keys], Name).
 
-build_value_str(Line, Field, Done, Key, Index) when Line =:= []; Field =:= [] ->
+build_value_str(Line, Field, Done, KeyList, Index) when Line =:= []; Field =:= [] ->
   Str = string:join(lists:reverse(Done), ", "),
   RealKey = 
-    case length(Key) =:= 1 of
+    case length(KeyList) =:= 1 of
       true ->
-        io_lib:format("~w", [hd(Key)]);
+        hd(KeyList);
       false ->
-        io_lib:format("~w", [list_to_tuple(lists:reverse(Key))])
+        KeyStr = string:join(lists:reverse(KeyList), ", "),
+        lists:concat(["{", KeyStr, "}"])
     end,
   {RealKey, Index, "{" ++ Str ++ "}"};
 build_value_str([Value| VTail], [Attr| CTail], Done, Key, Index) ->
@@ -92,7 +93,7 @@ build_value_str([Value| VTail], [Attr| CTail], Done, Key, Index) ->
         build_array_str(Value, [])
     end,
   NewOne = lists:concat([Name, " = ", RealValue]),
-  NewKey = case IsKey of true -> [RealValue| Key]; false -> Key end,
+  NewKey = case IsKey of true -> [lists:concat([RealValue])| Key]; false -> Key end,
   NewIndex = case IsIndex of true -> [{Name, RealValue}| Index]; false -> Index end,
   build_value_str(VTail, CTail, [NewOne| Done], NewKey, NewIndex).
 
