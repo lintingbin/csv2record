@@ -20,9 +20,9 @@ KN|S|NI|B|AS
 
 In the above csv table, the first line is the type(Can be combined), the second line is the name of the record field. As shown below, all types are single uppercase letters:
 
-|K|I|A|N|B|S|
-|:---:|:---:|:---:|:---:|:---:|:---:|
-Key|Index|Array|Number|Boolean|String
+|K|I|A|N|B|S|O|
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+Key|Index|Array|Number|Boolean|String|Omit
 
 **Key**, **Index** and **Array** can be used with **Number**, **Boolean** and **String**. A csv table has at least one Key and zero or more Index. The above csv table will eventually be converted to the following .hrl file and .erl file:
 ``` erlang
@@ -75,6 +75,13 @@ csv2record:generate(File, Option).
 %     ebin_dir(.beam file output directory. Default value: "ebin") |
 %     record_prefix(The prefix of record name. Default: "csv")
 ```
+Or create a escript executable file:
+``` erlang
+rebar3 escriptize
+_build/default/bin/csv2record $csv_dir $csv_opt  
+An example of $csv_opt: "ebin_dir=ebin;hrl_dir=include;src_dir=src;"
+```
+
 Discussing
 ----
 - [Submit issue](https://github.com/lintingbin2009/csv2record/issues)
