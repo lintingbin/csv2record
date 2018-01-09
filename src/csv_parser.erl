@@ -52,6 +52,7 @@ build_column_attr(Attrs) ->
   build_column_attr(Attrs, #column_attr{}).
 
 build_column_attr([], Attr) -> Attr;
+build_column_attr([$O| _], Attr) -> Attr;
 build_column_attr([$K| Tail], Attr) ->
   build_column_attr(Tail, Attr#column_attr{is_key = true});
 build_column_attr([$I| Tail], Attr) ->
