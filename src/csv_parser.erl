@@ -71,9 +71,29 @@ build_column_attr([_| Tail], Attr) ->
 parse_lines([], _, Res) -> 
   lists:reverse(Res);
 parse_lines([Line| Tail], Attrs, Res) ->
-  List = re:split(Line, ?CSV_COMMA),
+  List = line_to_list(Line, []),
   Data = parse_line(List, Attrs),
   parse_lines(Tail, Attrs, [Data| Res]).
+
+line_to_list([], Done) -> 
+  lists:reverse(Done);
+line_to_list([$"| Tail], Done) ->
+  {One, Tail1} = get_field_from_list(Tail, [], true),
+  line_to_list(Tail1, [One| Done]);
+line_to_list(List, Done) ->
+  {One, Tail1} = get_field_from_list(List, [], false),
+  line_to_list(Tail1, [One| Done]).
+
+get_field_from_list([], Done, _IsOne) ->
+  {lists:reverse(Done), []};
+get_field_from_list([$",$,| Tail], Done, _IsOne) ->
+  {lists:reverse(Done), Tail};
+get_field_from_list([$,| Tail], Done, true) ->
+  get_field_from_list(Tail, [$,| Done], true);
+get_field_from_list([$,| Tail], Done, false) ->
+  {lists:reverse(Done), Tail};
+get_field_from_list([C| Tail], Done, IsOne) -> 
+  get_field_from_list(Tail, [C| Done], IsOne).
 
 parse_line(List, Attrs) ->
   parse_line(List, Attrs, [], 1).
@@ -89,31 +109,35 @@ parse_line([_| Ltail], Atail, Done, Col) ->
 parse_elment(Element, #column_attr{is_array = IsArray, type = Type}) ->
   case IsArray of
     true ->
-      ElementList = re:split(Element, ?ARRAY_SEMICOLON),
+      ElementList = re:split(Element, ?ARRAY_SEMICOLON, [{return, list}]),
       [trans2erlang_type(Type, X) || X <- ElementList];
     false ->
       trans2erlang_type(Type, Element)
   end.
 
-trans2erlang_type({_ErlType, Defalut}, <<>>) ->
+trans2erlang_type({_ErlType, Defalut}, []) ->
   Defalut;
 trans2erlang_type({string, _Defalut}, Data) ->
-  [$"| binary_to_list(Data)] ++ [$"];
+  [$"| Data] ++ [$"];
 trans2erlang_type({integer, _Defalut}, Data) ->
   trans2erlang_integer(Data);
-trans2erlang_type({bool, _Defalut}, <<"True">>) -> 
-  true;
-trans2erlang_type({bool, _Defalut}, <<"False">>) -> 
-  false;
-trans2erlang_type(_ErlType, Unkonw) ->
-  error_exit({unexcept_type, Unkonw}).
+trans2erlang_type({bool, Defalut}, BoolStr) -> 
+  Bool = list_to_atom(string:lowercase(BoolStr)),
+  case Bool =:= false orelse Bool =:= true of
+    true ->
+      Bool;
+    false ->
+      error_exit({unexcept_type, {bool, Defalut}, BoolStr})
+  end;
+trans2erlang_type(ErlType, Unkonw) ->
+  error_exit({unexcept_type, ErlType, Unkonw}).
 
 trans2erlang_integer(Data) ->
   try 
-    binary_to_integer(Data) 
+    list_to_integer(Data)
   catch _:_ ->
     try 
-      binary_to_float(Data)
+      list_to_float(Data)
     catch _:_ ->
       error_exit({error_integer, Data})
     end
