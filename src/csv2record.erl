@@ -58,7 +58,11 @@ generate_file(Path, Pid, Opt) ->
   {Data, AttrList} = csv_parser:parse(Path),
   BaseName = filename:rootname(filename:basename(Path)),
   ErlFile = file_generator:generate(BaseName, Data, AttrList, Opt),
-  {ok, _} = compile:file(ErlFile, [{i, HrlDir}, {outdir, EbinDir}, verbose, report_errors, report_warnings]),
+  case compile:file(ErlFile, [{i, HrlDir}, {outdir, EbinDir}, verbose, report_errors, report_warnings]) of
+    {ok, _} -> ok;
+    Error ->
+      throw(Error)
+  end,
   case Pid =:= undefined of
     true ->
       ok;
