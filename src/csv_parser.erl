@@ -75,6 +75,8 @@ parse_lines([Line| Tail], Attrs, Res) ->
   Data = parse_line(List, Attrs),
   parse_lines(Tail, Attrs, [Data| Res]).
 
+line_to_list(last_is_empty, Done) ->
+  lists:reverse([[]| Done]);
 line_to_list([], Done) -> 
   lists:reverse(Done);
 line_to_list([$"| Tail], Done) ->
@@ -84,6 +86,8 @@ line_to_list(List, Done) ->
   {One, Tail1} = get_field_from_list(List, [], false),
   line_to_list(Tail1, [One| Done]).
 
+get_field_from_list([$,], Done, _IsOne) ->
+  {lists:reverse(Done), last_is_empty};
 get_field_from_list([], Done, _IsOne) ->
   {lists:reverse(Done), []};
 get_field_from_list([$",$,| Tail], Done, _IsOne) ->
