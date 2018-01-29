@@ -42,7 +42,7 @@ generate_erl_file(RecordName, Data, Attrs, Opt) ->
   Path = filename:join([Dir, FileName]),
   Str = build_erl_file_str(RecordName, Attrs, Data),
   {ok, Fd} = file:open(Path, [write]),
-  io:format(Fd, Str, []),
+  io:format(Fd, "~s", [Str]),
   file:close(Fd),
   Path.
 
@@ -57,6 +57,8 @@ build_erl_file_str(RecordName, Attrs, Data) ->
   GetAllKeysFunStr ++ 
   GetIndexFunStr.
   
+build_get_fun_str([], _, [], Keys, _) ->
+  {"\nget(_) -> not_found.\n\n", lists:reverse(Keys)};
 build_get_fun_str([], _, Funs, Keys, _) ->
   FunStr = string:join(lists:reverse(Funs), ";\n"),
   GetFunStr = FunStr ++ ";\nget(_) -> not_found.\n\n",
