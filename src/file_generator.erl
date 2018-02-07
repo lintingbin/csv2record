@@ -141,12 +141,18 @@ build_index_fun_strs([], FunStrList, FunNameList) ->
   {FunStr, FunNameStr};
 build_index_fun_strs([{IndexName, DictList}| Tail], FunStrList, FunNameList) ->
   FunName = "get_" ++ IndexName ++ "_keys",
-  FunStr = build_index_fun_str(DictList, FunName, []),
-  build_index_fun_strs(Tail, [FunStr| FunStrList], [FunName ++ "/1"| FunNameList]).
+  SortDictList = lists:sort(DictList),
+  FunStr = build_index_fun_str(SortDictList, FunName, []),
+  AllIndexFunName = "get_all_" ++ IndexName,
+  AllIndex = [lists:concat([Key]) || {Key, _} <- SortDictList],
+  AllIndexStr = string:join(AllIndex, ", "),
+  AllIndexFunStr = AllIndexFunName ++ "() -> \n  [" ++ AllIndexStr ++ "].\n\n",
+  IndexFunStr = FunStr ++ AllIndexFunStr,
+  build_index_fun_strs(Tail, [IndexFunStr| FunStrList], [FunName ++ "/1, " ++ AllIndexFunName ++ "/0"| FunNameList]).
 
 build_index_fun_str([], FunName, FunStrList) ->
   FunStr = string:join(FunStrList, ";\n"),
-  FunStr ++ ";\n" ++ FunName ++ "(_) -> \n not_found.\n";
+  FunStr ++ ";\n" ++ FunName ++ "(_) -> \n not_found.\n\n";
 build_index_fun_str([{Key, List}| Tail], FunName, FunStrList) ->
   ListStr = string:join(List, ", "),
   FunStr = lists:concat([FunName, "(", Key, ") -> \n  [", ListStr, "]"]),
