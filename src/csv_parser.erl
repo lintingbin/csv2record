@@ -112,6 +112,8 @@ parse_line([_| Ltail], Atail, Done, Col) ->
 
 parse_elment(Element, #column_attr{is_array = IsArray, type = Type}) ->
   case IsArray of
+    true when Element =:= [] ->
+      [];
     true ->
       ElementList = re:split(Element, ?ARRAY_SEMICOLON, [{return, list}]),
       [trans2erlang_type(Type, X) || X <- ElementList];
