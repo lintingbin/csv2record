@@ -1,6 +1,6 @@
 csv2record
 ====
-A conversion tool for csv to erlang record.
+A conversion tool for csv to erlang record.  
 
 Introduction
 ----
