@@ -128,13 +128,7 @@ trans2erlang_type({string, _Defalut}, Data) ->
 trans2erlang_type({integer, _Defalut}, Data) ->
   trans2erlang_integer(Data);
 trans2erlang_type({bool, Defalut}, BoolStr) -> 
-  Bool = list_to_atom(string:lowercase(BoolStr)),
-  case Bool =:= false orelse Bool =:= true of
-    true ->
-      Bool;
-    false ->
-      error_exit({unexcept_type, {bool, Defalut}, BoolStr})
-  end;
+  trans2erlang_bool(Defalut, BoolStr);
 trans2erlang_type(ErlType, Unkonw) ->
   error_exit({unexcept_type, ErlType, Unkonw}).
 
@@ -147,6 +141,25 @@ trans2erlang_integer(Data) ->
     catch _:_ ->
       error_exit({error_integer, Data})
     end
+  end.
+
+trans2erlang_bool(Default, BoolStr) ->
+  BoolAtom = 
+    try
+      string:lowercase(BoolStr)
+    catch _:_ ->
+      try 
+        string:to_lower(BoolStr)
+      catch _:_ ->
+          error_exit({error_bool, BoolStr})
+      end
+    end,
+  Bool = list_to_atom(BoolAtom),
+  case Bool =:= false orelse Bool =:= true of
+    true ->
+      Bool;
+    false ->
+      error_exit({unexcept_type, {bool, Default}, BoolStr})
   end.
 
 error_exit(Error) ->
